@@ -611,8 +611,10 @@ class LiRPANet:
                 # first get CROWN bounds
                 # Reference bounds are intermediate layer bounds from initial CROWN bounds.
                 lb, ub, aux_reference_bounds = self.net.init_alpha(
-                    (batch_x,), share_alphas=share_alphas, c=batch_c, bound_upper=False)
-                print('initial CROWN bounds (first 10 items):', lb.flatten()[:10].tolist())
+                    (batch_x,), share_alphas=share_alphas, c=batch_c, bound_upper=True)
+                print('initial CROWN lower bounds:', lb.flatten().tolist())
+                if ub is not None:
+                    print('initial CROWN upper bounds:', ub.flatten().tolist())
 
                 if arguments.Config['general']['save_output']:
                     assert total_batches == 1
@@ -625,12 +627,14 @@ class LiRPANet:
                 if stop_criterion_func(lb).all().item():
                     # Fast path. Initial CROWN bound can verify the network.
                     print('Verified with initial CROWN!')
-                    ret = (lb, None)
-                    if total_batches == 1:
-                        # If we only have one batch, we can return the result directly.
-                        return lb, {}
-                else:
-                    # Prune the specifications that can be verified by initial CROWN bounds.
+                    # Skip fast return to always compute alpha-CROWN.
+                    # ret = (lb, None)
+                    # if total_batches == 1:
+                    #     # If we only have one batch, we can return the result directly.
+                    #     return lb, {}
+
+                # Prune the specifications that can be verified by initial CROWN bounds.
+                if not stop_criterion_func(lb).all().item():
                     if solver_args['prune_after_crown']:
                         prune_after_crown = PruneAfterCROWN(
                             self.net, batch_x, batch_c, batch_rhs, lb,
@@ -644,7 +648,7 @@ class LiRPANet:
                         self.net.set_bound_opts({
                             'optimize_bound_args': {'stop_criterion_func': stop_criterion_func},
                         })
-                    if arguments.Config['attack']['pgd_order'] == 'middle' and vnnlib_handler is not None:                        
+                    if arguments.Config['attack']['pgd_order'] == 'middle' and vnnlib_handler is not None:
                         _, verified_success, attack_examples, _, _ = attack(
                             self.model_ori, batch_x, batch_c, batch_rhs, batch_or_spec_size,
                             vnnlib_handler.vnnlib,
@@ -654,16 +658,16 @@ class LiRPANet:
                             print("pgd attack succeed in middle order")
                             return None, {'attack_examples': attack_examples}
 
-                    if enable_clip_domains or clip_in_alpha_crown:
-                        print('Using alpha-CROWN with output constraints to initialize bounds.')
-                    else:
-                        print('Using alpha-CROWN to initialize bounds.')
-                    ret = self.net.compute_bounds(
-                        x=(batch_x,), C=batch_c, method='CROWN-Optimized',
-                        return_A=self.return_A, needed_A_dict=self.needed_A_dict,
-                        bound_upper=False, aux_reference_bounds=aux_reference_bounds,
-                        cutter=self.cutter, interm_bounds=batch_interm_bounds,
-                        decision_thresh=rhs)
+                if enable_clip_domains or clip_in_alpha_crown:
+                    print('Using alpha-CROWN with output constraints to initialize bounds.')
+                else:
+                    print('Using alpha-CROWN to initialize bounds.')
+                ret = self.net.compute_bounds(
+                    x=(batch_x,), C=batch_c, method='CROWN-Optimized',
+                    return_A=self.return_A, needed_A_dict=self.needed_A_dict,
+                    bound_upper=True, aux_reference_bounds=aux_reference_bounds,
+                    cutter=self.cutter, interm_bounds=batch_interm_bounds,
+                    decision_thresh=rhs)
             elif bounding_method == 'alpha-forward':
                 warnings.warn('alpha-forward can only be used with input split for now')
                 self.net.bound_opts['optimize_bound_args']['init_alpha'] = True
@@ -675,7 +679,7 @@ class LiRPANet:
                         assert not self.return_A
                         lb, ub, _ = self.net.init_alpha(
                             (batch_x,), share_alphas=share_alphas, c=batch_c,
-                            bound_upper=False
+                            bound_upper=True
                             )
                         ret = lb, ub
                     else:
@@ -698,9 +702,13 @@ class LiRPANet:
             else:
                 batch_input_split_idx = {}
 
-            print(f'initial {bounding_method} bounds (first 10 items):', lb.flatten()[:10].tolist())
+            print(f'initial {bounding_method} lower bounds:', lb.flatten().tolist())
             global_lb = lb.min().item()
             print(f'Global lower bound: {global_lb}')
+            if ub is not None:
+                print(f'initial {bounding_method} upper bounds:', ub.flatten().tolist())
+                global_ub = ub.max().item()
+                print(f'Global upper bound: {global_ub}')
 
             # DEBUG: check loose bounds
             if os.environ.get('ABCROWN_VIEW_INTERM', False):

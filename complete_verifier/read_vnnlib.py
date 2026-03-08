@@ -185,7 +185,7 @@ def read_vnnlib(vnnlib_filename, regression=False):
             except (pickle.PickleError, ValueError, EOFError):
                 print("Cannot read compiled vnnlib file. Regenerating...")
                 read_error = True
-            
+
             if (read_error == False):
                 if (curfile_sha256 == old_file_sha256):
                     print(f"Precompiled vnnlib file found at {compiled_vnnlib_filename}")
