@@ -595,6 +595,11 @@ class LiRPANet:
             batch_x, batch_c, batch_rhs, stop_criterion_func, batch_interm_bounds, _, batch_or_spec_size = (
                 batch_handler.get_batch_input(now_batch, device)
             )
+            # Optionally disable verification-based early stopping so that
+            # optimization only stops from patience (no bound improvement).
+            if arguments.Config['solver']['alpha-crown'].get('disable_stop_criterion', False):
+                stop_criterion_func = lambda x: torch.zeros(
+                    x.shape[0], 1, dtype=torch.bool, device=x.device)
             self.net.set_bound_opts({'optimize_bound_args': {'stop_criterion_func': stop_criterion_func}})
             self.x = batch_x
             self.c = batch_c

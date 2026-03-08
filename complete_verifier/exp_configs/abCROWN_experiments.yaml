@@ -1,0 +1,33 @@
+general:
+  device: cpu
+  complete_verifier: skip
+  enable_incomplete_verification: true
+  conv_mode: patches
+  sparse_alpha: true
+  sparse_interm: true
+  graph_optimizer: 'Customized("custom_graph_optimizer", "default_optimizer")'
+
+solver:
+  batch_size: 64
+  prune_after_crown: false
+  alpha-crown:
+    lr_alpha: 0.5
+    iteration: 20
+    full_conv_alpha: true
+    alpha_dtype: float16
+    max_time: 1.0
+    disable_stop_criterion: true
+  beta-crown:
+    lr_alpha: 0.01
+    lr_beta: 0.05
+    iteration: 50
+
+bab:
+  timeout: 360
+  branching:
+    method: kfsb
+    candidates: 3
+    reduceop: min
+
+attack:
+  pgd_order: skip
