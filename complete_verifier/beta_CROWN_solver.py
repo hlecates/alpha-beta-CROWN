@@ -595,11 +595,6 @@ class LiRPANet:
             batch_x, batch_c, batch_rhs, stop_criterion_func, batch_interm_bounds, _, batch_or_spec_size = (
                 batch_handler.get_batch_input(now_batch, device)
             )
-            # Optionally disable verification-based early stopping so that
-            # optimization only stops from patience (no bound improvement).
-            if arguments.Config['solver']['alpha-crown'].get('disable_stop_criterion', False):
-                stop_criterion_func = lambda x: torch.zeros(
-                    x.shape[0], 1, dtype=torch.bool, device=x.device)
             self.net.set_bound_opts({'optimize_bound_args': {'stop_criterion_func': stop_criterion_func}})
             self.x = batch_x
             self.c = batch_c
@@ -632,14 +627,12 @@ class LiRPANet:
                 if stop_criterion_func(lb).all().item():
                     # Fast path. Initial CROWN bound can verify the network.
                     print('Verified with initial CROWN!')
-                    # Skip fast return to always compute alpha-CROWN.
-                    # ret = (lb, None)
-                    # if total_batches == 1:
-                    #     # If we only have one batch, we can return the result directly.
-                    #     return lb, {}
-
-                # Prune the specifications that can be verified by initial CROWN bounds.
-                if not stop_criterion_func(lb).all().item():
+                    ret = (lb, ub)
+                    if total_batches == 1:
+                        # If we only have one batch, we can return the result directly.
+                        return lb, {}
+                else:
+                    # Prune the specifications that can be verified by initial CROWN bounds.
                     if solver_args['prune_after_crown']:
                         prune_after_crown = PruneAfterCROWN(
                             self.net, batch_x, batch_c, batch_rhs, lb,
@@ -663,16 +656,16 @@ class LiRPANet:
                             print("pgd attack succeed in middle order")
                             return None, {'attack_examples': attack_examples}
 
-                if enable_clip_domains or clip_in_alpha_crown:
-                    print('Using alpha-CROWN with output constraints to initialize bounds.')
-                else:
-                    print('Using alpha-CROWN to initialize bounds.')
-                ret = self.net.compute_bounds(
-                    x=(batch_x,), C=batch_c, method='CROWN-Optimized',
-                    return_A=self.return_A, needed_A_dict=self.needed_A_dict,
-                    bound_upper=True, aux_reference_bounds=aux_reference_bounds,
-                    cutter=self.cutter, interm_bounds=batch_interm_bounds,
-                    decision_thresh=rhs)
+                    if enable_clip_domains or clip_in_alpha_crown:
+                        print('Using alpha-CROWN with output constraints to initialize bounds.')
+                    else:
+                        print('Using alpha-CROWN to initialize bounds.')
+                    ret = self.net.compute_bounds(
+                        x=(batch_x,), C=batch_c, method='CROWN-Optimized',
+                        return_A=self.return_A, needed_A_dict=self.needed_A_dict,
+                        bound_upper=True, aux_reference_bounds=aux_reference_bounds,
+                        cutter=self.cutter, interm_bounds=batch_interm_bounds,
+                        decision_thresh=rhs)
             elif bounding_method == 'alpha-forward':
                 warnings.warn('alpha-forward can only be used with input split for now')
                 self.net.bound_opts['optimize_bound_args']['init_alpha'] = True

@@ -8,10 +8,10 @@ general:
   graph_optimizer: 'Customized("custom_graph_optimizer", "default_optimizer")'
 
 model:
-  onnx_path: ../benchmarks/metaroom_2023/onnx/6cnn_ry_48_8_no_custom_OP.onnx
+  onnx_path: ../benchmarks/test/onnx/test_nano.onnx
 
 specification:
-  vnnlib_path: ../benchmarks/metaroom_2023/vnnlib/spec_idx_123_eps_0.00000436.vnnlib
+  vnnlib_path: ../benchmarks/test/vnnlib/test_nano.vnnlib
 
 solver:
   batch_size: 64
@@ -22,7 +22,7 @@ solver:
     full_conv_alpha: true
     alpha_dtype: float16
     max_time: 1.0
-    disable_stop_criterion: true
+
   beta-crown:
     lr_alpha: 0.01
     lr_beta: 0.05

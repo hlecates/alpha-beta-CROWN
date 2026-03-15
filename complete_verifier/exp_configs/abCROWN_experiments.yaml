@@ -16,7 +16,6 @@ solver:
     full_conv_alpha: true
     alpha_dtype: float16
     max_time: 1.0
-    disable_stop_criterion: true
   beta-crown:
     lr_alpha: 0.01
     lr_beta: 0.05

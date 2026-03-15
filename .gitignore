@@ -26,3 +26,6 @@ release_abcrown
 cachier
 out.csv
 results.csv
+
+.venv/
+benchmarks/

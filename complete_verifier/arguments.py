@@ -379,10 +379,6 @@ class ConfigHandler:
                           choices = ['float16', 'auto'],
                           help='The dtype of alpha stored in branch and bound domains. alpha may take a lot of space, and we use float16 to save memory by default. Setting it to "auto" will use float32 or float64 depending on whether double precision is enabled (useful for debugging).',
                           hierarchy=h + ['alpha_dtype'])
-        self.add_argument('--disable_stop_criterion', action='store_true',
-                          help='Disable verification-based early stopping during alpha-CROWN optimization. '
-                               'When enabled, optimization only stops from patience (no bound improvement) or iteration/time limits.',
-                          hierarchy=h + ['disable_stop_criterion'])
         self.add_argument('--input_split_alpha_iteration', type=int, default=5,
                           help='Number of alpha-CROWN iterations during input-split based branch and bound.',
                           hierarchy=h + ['input_split_alpha_iteration'])
